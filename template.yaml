@@ -1,0 +1,55 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Parameters:
+  Urls:
+    Type: String
+    Description: "Domains to remind (comma separated)"
+    Default: "example.com"
+  BufferDays:
+    Type: Number
+    Description: "Days to start reminding"
+    Default: 30
+  IncommingWebhooks:
+    Type: String
+    Description: "URL of Slack Incoming Webhook"
+    Default: "https://hooks.slack.com/services/*"
+
+Resources:
+  RemindFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: remind/
+      Handler: app.lambda_handler
+      Runtime: python3.7
+      Timeout: 10
+      Environment:
+        Variables:
+          Urls: !Ref Urls
+          BufferDays: !Ref BufferDays
+          IncommingWebhooks: !Ref IncommingWebhooks
+      Events:
+        RemindSchedule:
+          Type: Schedule
+          Properties:
+            Schedule: "cron(0 1 * * ? *)"
+  RemindFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: RemindFunction
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${RemindFunction}
+      RetentionInDays: 90
+
+Outputs:
+  RemindFunction:
+    Description: "Remind Function ARN"
+    Value: !GetAtt RemindFunction.Arn
+  RemindFunctionRole:
+    Description: "Implicit IAM Role created for Remind function"
+    Value: !GetAtt RemindFunctionRole.Arn
+  RemindFunctionLogGroup:
+    Description: "Log Group for Remind Function"
+    Value: !GetAtt RemindFunctionLogGroup.Arn
+  RemindFunctionRemindSchedule:
+    Description: "Schedule for Remind Function"
+    Value: !GetAtt RemindFunctionRemindSchedule.Arn
